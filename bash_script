@@ -1,0 +1,51 @@
+#!/bin/bash
+
+clear
+
+param="./memory_check -c [arg] -w [arg] -e [arg]\
+\n -c : critical threshold (percentage)\
+\n -w : warning threshold (percentage)\
+\n -e : email address"
+
+total=$( free | grep Mem: | awk '{ print $2 }' )
+used=$( free | grep Mem: | awk '{ print $3 }' )
+
+while getopts ":c:w:e:" opt
+do
+	case $opt in
+		c) crit=$OPTARG;;
+		w) warn=$OPTARG;;
+		e) email=$OPTARG;;
+	esac
+done
+
+if [[ -z $crit || -z $warn || -z $email ]]
+then
+	echo "ERROR: Insufficient Parameters"
+	echo -e $param
+else
+	if [ $crit -le $warn ]
+	then
+		echo "ERROR: Critical Threshold must be greater than Warning Threshold"
+		echo -e $param
+	else
+		let th1=$total*$crit/100
+		let th2=$total*$warn/100
+		if [ $used -ge $th1 ]
+		then
+			echo "2"
+			date +%Y%m%d-%H%M
+			ps -eo pid,cmd | sort -k 1 -nr | head -10
+			exit 2
+		elif [ $used -lt $th2 ]
+		then
+			echo "0"
+			date +%Y%m%d-%H%M
+			exit 0
+		else
+			echo "1"
+			date +%Y%m%d-%H%M
+			exit 1
+		fi
+	fi
+fi
